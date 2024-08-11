@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package com.databrew.gateway.stream;
+
+option go_package = "github.com/usedatabrew/datagateway/gen;gen";
+
+service Stream {
+  rpc GetStream (StreamRequest) returns (stream StreamResponse) {}
+  rpc AckOffset(AcceptCursor) returns (AcceptedCursor) {}
+}
+
+message AcceptCursor {
+  int64 cursor = 1;
+  string id = 2;
+}
+
+message AcceptedCursor {
+  int64 cursor = 1;
+  bool success = 2;
+}
+
+message StreamRequest {
+  string id = 1;
+  bool auto_ack = 2;
+}
+
+message StreamResponse {
+  string external_pk = 1;
+  string raw = 2;
+  int32 catalog_id = 3;
+  string source = 4;
+  string source_event = 5;
+  string data_set = 6;
+  bool deleted = 7;
+  int64 cursor = 8;
+}
