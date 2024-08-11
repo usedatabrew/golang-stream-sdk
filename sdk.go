@@ -2,6 +2,9 @@ package streamdk
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
+
 	"github.com/usedatabrew/golang-stream-sdk/gen"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -43,24 +46,39 @@ func (s *StreamSdk) Subscribe(ctx context.Context, pipelineId string, response c
 		return err
 	}
 
-	for {
-		msg, err := stream.Recv()
-		if err != nil {
-			return err
-		}
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				stream.CloseSend()
+				return
+			default:
+				msg, err := stream.Recv()
+				if err != nil {
+					panic(err)
+				}
 
-		if msg == nil {
-			break
-		} else {
-			response <- *msg
+				decodedBytes, err := base64.StdEncoding.DecodeString(msg.Raw)
+				if err != nil {
+					fmt.Println("Error decoding string:", err)
+					return
+				}
+				msg.Raw = string(decodedBytes)
+
+				if msg == nil {
+					break
+				} else {
+					response <- *msg
+				}
+			}
 		}
-	}
+	}()
 
 	return nil
 }
 
 func (s *StreamSdk) getRequestCtx(ctx context.Context) context.Context {
-	return addCustomHeader(ctx, "custom-header-key", "custom-header-value")
+	return addCustomHeader(ctx, "x-api-key", s.opts.ApiKey)
 }
 
 func (s *StreamSdk) Close() error {
